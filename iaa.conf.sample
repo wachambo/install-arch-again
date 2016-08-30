@@ -1,0 +1,23 @@
+# title : iaa.conf
+# brief : config file example for iaa.sh
+# author: Alejandro Blasco
+
+uefi='no'
+bootloader='syslinux'
+dest_disk='/dev/sda'
+swap='no'
+home='yes'
+root_size='20G'
+home_size='0'
+fstype='ext4'
+locale='en_US.UTF-8'
+keymap='es'
+font='lat9w-10'
+timezone='Europe/Berlin'
+hardware_clock='utc'
+hostname='arch'
+username='ablasco'
+login_shell='zsh'
+packages=(neovim zsh)
+window_manager='i3'
+display_manager='no'
