@@ -82,10 +82,10 @@ check_configuration() {
   printf "${GREEN}Checking configurations ...\n${ALL_OFF}"
 
   # source configuration file if it is in the current working directory
-  if [ -s ./ari.conf ]; then
-    . ./ari.conf
+  if [ -s ./iaa.conf ]; then
+    . ./iaa.conf
   else
-    error "configuration file ari.conf not found in $(pwd)"
+    error "configuration file iaa.conf not found in $(pwd)"
   fi
 
   # edit_conf
