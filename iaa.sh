@@ -464,6 +464,8 @@ set_locale()
 {
   # Refer to https://wiki.archlinux.org/index.php/Locale
   info '  System Locale'
+  sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
+  run_root "locale-gen"
   cat <<HERE | tee /mnt/etc/locale.conf
   LANG=${locale}
 HERE
@@ -482,7 +484,10 @@ set_timezone()
 {
   # Refer to https://wiki.archlinux.org/index.php/Timezone
   info '  Timezone'
-  ln -sf /mnt/usr/share/zoneinfo/$timezone /mnt/etc/localtime
+  ln -sf /usr/share/zoneinfo/$timezone /mnt/etc/localtime
+
+  # NOTE: symbolic names points to the future post-installation locaation,
+  # not the actual locaation (under /mnt) ;-)
 }
 
 set_hardware_clock()
@@ -790,7 +795,10 @@ configure_xinitrc()
   # Refer to https://wiki.archlinux.org/index.php/xinitrc
   info 'Configuring xinitrc'
   pacman_install xorg-xinit
-  cp -fv /mnt/etc/X11/xinit/xinitrc /mnt/home/${username}/.xinitrc
+  #TODO!! the skeletom of xinitrc is shit and must be not copied.
+  # It contains automatic execution of 'twm' or 'xterm' even if
+  # you didn't install them
+  #cp -fv /mnt/etc/X11/xinit/xinitrc /mnt/home/${username}/.xinitrc
   local session
   session=$(case $window_manager in
   enlightenment)
@@ -937,3 +945,6 @@ main()
 set -e -u
 main "$@"
 exit 0
+
+
+# vim: set ai ts=2 sw=2 sts=2 tw=80 et ft=sh :
