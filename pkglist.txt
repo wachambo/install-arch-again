@@ -1,0 +1,12 @@
+bash-completion
+xdg-user-dirs
+adobe-source-code-pro-fonts
+tmux
+git
+termite
+base-devel
+ctags
+python2
+python2-virtualenv
+chromium
+openssh

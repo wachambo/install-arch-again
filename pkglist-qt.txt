@@ -1,0 +1,14 @@
+bash-completion
+xdg-user-dirs
+vim
+adobe-source-code-pro-fonts
+tmux
+git
+base-devel
+ctags
+python2
+python2-virtualenv
+chromium
+openssh
+konsole
+partitionmanager

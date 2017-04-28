@@ -238,7 +238,7 @@ check_configuration()
   esac
   ## Check display_manager
   case $display_manager in
-    no|gdm|kdm|lightdm|lxdm|mdm|ssdm|slim|xdm) ;;
+    no|gdm|kdm|sddm|lightdm|lxdm|mdm|slim|xdm) ;;
     *) error_conf 'display_manager' ;;
   esac
 }
@@ -769,9 +769,9 @@ install_window_manager()
     cinnamon) pacman_install cinnamon ;;
     enlightenment)
       pacman_install enlightenment ;;
-    gnome)    pacman_install gnome ;;
+    gnome)    pacman_install gnome-shell gnome-control-center ;;
     i3)       pacman_install i3 dmenu ;;
-    kde)      pacman_install kde ;;
+    kde)      pacman_install plasma plasma-wayland-session ;;
     lxde)     pacman_install lxde ;;
     mate)     pacman_install mate ;;
     xfce)     pacman_install xfce4 xfce4-goodies ;;
@@ -792,6 +792,8 @@ install_display_manager()
 
 configure_xinitrc()
 {
+  [[ $display_manager != 'no' ]] && return 0
+
   # Refer to https://wiki.archlinux.org/index.php/xinitrc
   info 'Configuring xinitrc'
   pacman_install xorg-xinit
@@ -801,27 +803,25 @@ configure_xinitrc()
   #cp -fv /mnt/etc/X11/xinit/xinitrc /mnt/home/${username}/.xinitrc
   local session
   session=$(case $window_manager in
-  enlightenment)
-  echo 'enlightenment_start' ;;
-cinnamon) echo 'cinnamon-session' ;;
-gnome)    echo 'gnome-session' ;;
-i3)       echo 'i3' ;;
-kde)      echo 'startkde' ;;
-lxde)     echo 'startlxde' ;;
-mate)     echo 'mate-session' ;;
-xfce)     echo 'startxfce4' ;;
-*)       alert 'Nothing to install' ;;
-# Add more...
+    enlightenment) echo 'enlightenment_start' ;;
+    cinnamon) echo 'cinnamon-session' ;;
+    gnome)    echo 'gnome-session' ;;
+    i3)       echo 'i3' ;;
+    kde)      echo 'startkde' ;;
+    lxde)     echo 'startlxde' ;;
+    mate)     echo 'mate-session' ;;
+    xfce)     echo 'startxfce4' ;;
+    # Add more...
   esac)
   echo -e "exec $session" >> /mnt/home/${username}/.xinitrc
 
-  if [[ $video_driver == 'virtualbox' ]]; then
-    # Launch automatically all VBox guest services
-    echo "/usr/bin/VBoxClient-all" >> /mnt/home/${username}/.xinitrc
+  #if [[ $video_driver == 'virtualbox' ]]; then
+  #  # Launch automatically all VBox guest services
+  #  echo "/usr/bin/VBoxClient-all" >> /mnt/home/${username}/.xinitrc
 
-    # To enable shared folders:
-    #https://wiki.archlinux.org/index.php/VirtualBox#Enable_shared_folders
-  fi
+  #  # To enable shared folders:
+  #  #https://wiki.archlinux.org/index.php/VirtualBox#Enable_shared_folders
+  #fi
 
   run_root chown ${username}:users /home/${username}/.xinitrc
 }
@@ -894,9 +894,20 @@ end_installation()
   umount --recursive /mnt
 
   alert '---------------------------------------'
-  alert '        Installation completed!'
+  alert '        Installation completed! (*)'
   alert '     Reboot the computer: # reboot'
   alert '---------------------------------------'
+
+  alert ''
+  alert '(*) After rebooting remember to do...'
+  if [[ $video_driver == 'virtualbox' ]]; then
+    alert '# systemctl enable vboxservice'
+  fi
+
+  case $display_manager in
+    gdm|kdm|sddm|lightdm|lxdm|mdm|slim|xdm)
+      alert "# systemctl enable $display_manager" ;;
+  esac
 }
 # END POST-INSTALL }}}
 
