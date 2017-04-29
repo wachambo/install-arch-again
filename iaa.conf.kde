@@ -1,0 +1,35 @@
+# Title : iaa.conf
+# Brief : config file example for iaa.sh
+# Author: Alejandro Blasco
+
+review='yes'
+EDITOR='vi'
+uefi='no'
+bootloader='syslinux'
+#bootloader='grub'
+dest_disk='/dev/sda'
+swap='no'
+home='yes'
+boot_size='200M'
+root_size='19G'
+home_size='0'
+fstype='ext4'
+locale='en_US.utf8'
+keymap='es'
+#font='lat9w-10'
+x11_layout=es
+x11_model=pc105
+x11_variant=
+x11_options=terminate:ctrl_alt_bksp
+video_driver='vmware'
+timezone='Europe/Madrid'
+hardware_clock='utc' # utc, localtime... see hwclock Options
+hostname='Linux'
+root_password='toor'
+user_password='123'
+username='abm'
+login_shell='bash'
+packages=()
+window_manager='kde'
+display_manager='sddm'
+k_modules=

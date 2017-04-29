@@ -226,7 +226,7 @@ check_configuration()
 
   # Check Video driver
   case $video_driver in
-    amd|ati|intel|nouveau|nvidia|virtualbox) ;;
+    amd|ati|intel|nouveau|nvidia|virtualbox|vmware) ;;
     *) error_conf 'video_driver' ;;
   esac
 
@@ -723,6 +723,13 @@ install_video_card_driver()
       pacman_install virtualbox-guest-utils virtualbox-guest-modules-arch
       # Load VBox kernel modules automatically
       run_root systemctl enable vboxservice.service
+      ;;
+    vmware)
+      #https://wiki.archlinux.org/index.php/VMware/Installing_Arch_as_a_guest
+      pacman_install open-vm-tools
+      run_root systemctl enable vmware-vmblock-fuse.service
+      # Xorg
+      pacman_install xf86-input-vmmouse xf86-video-vmware mesa
       ;;
     *);;
   esac
