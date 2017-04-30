@@ -20,6 +20,9 @@
 # Set a temporay keymap (maybe for edditing this script)
 # do: # loadkeys 'keymap'
 
+set -e
+set -u
+
 # Some global vars
 unset log tty
 log='./iaa.log'
@@ -89,8 +92,8 @@ check_configuration()
         EDITOR='vi'
       fi
       ;;
-    no)  ;;
-    *)   error_conf 'edit_conf' ;;
+    *)
+      review='no' ;;
   esac
 
   # Partitioning
@@ -172,7 +175,18 @@ check_configuration()
 
   # Check BIOS or UEFI
   case $uefi in
-    yes)
+    no)
+      ## BIOS supports Syslinux and Grub
+      case $bootloader in
+        syslinux|grub) ;;
+        *) bootloader='grub' ;;
+      esac
+
+      # boot_size
+      [[ -z $boot_size ]] && error_conf 'boot_size'
+      [[ $boot_size =~ [0-9]+[K,M,G,T] ]] || error_conf 'boot_size'
+      ;;
+    *)
       ## check if install host is booted in uefi mode
       if [[ -z "$(mount --types=efivarfs)" ]]; then
         mount --types=efivarfs /sys/firmware/efi/efivars || error_conf 'uefi'
@@ -180,21 +194,12 @@ check_configuration()
       efivar -l || error_conf 'uefi'
       ## UEFI only allows Grub.
       ## Syslinux automatic installation is only available for BIOS.
-      [[ $bootloader = 'grub' ]] || error_conf 'bootloader'
+      bootloader='grub'
       type mkfs.vfat || error 'missing package: dosfstools'
 
-      # ESP size
-      [[ $esp_size =~ [0-9]+[K,M,G,T] ]] || error_conf 'esp_siz'
-      ;;
-    no)
-      ## BIOS supports Syslinux and Grub
-      [[ $bootloader =~ syslinux|grub ]] || error_conf 'bootloader'
-
-      # boot_size
-      [[ $boot_size =~ [0-9]+[K,M,G,T] ]] || error_conf 'boot_size'
-      ;;
-    *)
-      error_conf 'uefi'
+      # ESP size recommedation
+      # (https://wiki.archlinux.org/index.php/Unified_Extensible_Firmware_Interface_(Espa%C3%B1ol)#EFI_System_Partition)
+      esp_size='256M'
       ;;
   esac
 
@@ -204,27 +209,35 @@ check_configuration()
   # Check keymap
   #TODO, bug reported
   #[[ $(localectl list-keymaps) =~ "$keymap" ]] || error_conf 'keymap'
-  [[ $keymap =~ [a-z][a-z] ]] || error_conf 'keymap'
+  [[ -n $keymap && $keymap =~ [a-z][a-z] ]] || error_conf 'keymap'
   ## Load keymap for installation
   loadkeys ${keymap}
 
   # Check x11-layout
   # (cannot vaalidate other options in this step)
-  [[ $x11_layout =~ [a-z][a-z] ]] || error_conf 'x11_layout'
+  [[ -n $x11_layout && $x11_layout =~ [a-z][a-z] ]] || error_conf 'x11_layout'
 
   # Check timezone
-  [[ $(timedatectl list-timezones) =~ "$timezone" ]] || error_conf 'timezone'
+  [[ -n $timezone && $(timedatectl list-timezones) =~ "$timezone" ]] || error_conf 'timezone'
 
   # Check hardware_clock
-  [[ $hardware_clock =~ utc|localtime ]] || error_conf 'hardware_clock'
+  [[ -n $hardware_clock && $hardware_clock =~ utc|localtime ]] || error_conf 'hardware_clock'
 
   # Check hostname
-  [[ $hostname =~ [a-z0-9][a-z0-9-]*[a-z0-9] ]] || error_conf 'hostname'
+  [[ -n $hostname && $hostname =~ [a-z0-9][a-z0-9-]*[a-z0-9] ]] || error_conf 'hostname'
 
   # Check username
   [[ -z $username ]] && error_conf 'username'
 
+  # Check login shell
+  [[ -z $login_shell ]] && login_shell='bash'
+  case $video_driver in
+    sh|bash|tcsh|dash|fish|ksh|nash|oh|powershell|rc|xonsh|zsh) ;;
+    *) error_conf 'login_shell' ;;
+  esac
+
   # Check Video driver
+  [[ -z $video_driver ]] && error_conf 'video_driver'
   case $video_driver in
     amd|ati|intel|nouveau|nvidia|virtualbox|vmware) ;;
     *) error_conf 'video_driver' ;;
@@ -232,11 +245,15 @@ check_configuration()
 
   # Check Xorg
   ## Check desktop_environment
+  [[ -z $window_manager ]] && error_conf 'window_manager'
   case $window_manager in
+    #TODO complete
     no|cinnamon|enlightenment|gnome|i3|kde|lxde|mate|xfce4)  ;;
     *) error_conf 'window_manager' ;;
   esac
+
   ## Check display_manager
+  [[ -z $display_manager ]] && error_conf 'display_manager'
   case $display_manager in
     no|gdm|kdm|sddm|lightdm|lxdm|mdm|slim|xdm) ;;
     *) error_conf 'display_manager' ;;
@@ -425,6 +442,9 @@ make_part()
   mkfs.${mkfs_options} ${dest_disk}${home_num}
   mkdir /mnt/home
   mount --options=nodev,nosuid --types=$fstype ${dest_disk}${home_num} /mnt/home
+
+  # Increase cowspace partition
+  mount --options=remount,size=2G /run/archiso/cowspace
 }
 
 install_base()
@@ -616,16 +636,16 @@ install_bootloader()
       ## Run grub-mkconfig and grub-install
       if [[ $uefi = 'yes' ]]; then
         ## UEFI
-        run_root rub-mkconfig --ouput=/boot/grub/grub.cfg
         run_root grub-install --target=x86_64-efi \
           --efi-directory=/boot \
-          --bootloader-id=arch_grub \
+          --bootloader-id=grub \
           --recheck
+        run_root grub-mkconfig --output=/boot/grub/grub.cfg
       else
         ## BIOS
-        run_root grub-mkconfig --output=/boot/grub/grub.cfg
         run_root grub-install --target=i386-pc \
           --recheck ${dest_disk}
+        run_root grub-mkconfig --output=/boot/grub/grub.cfg
       fi
       cat /mnt/boot/grub/grub.cfg
       ;;
@@ -716,9 +736,8 @@ install_video_card_driver()
     nvidia) ;;
     virtualbox)
       #https://wiki.archlinux.org/index.php/VirtualBox#Installation_steps_for_Arch_Linux_guests
-      pacman_install xf86-video-vesa
-      # 3D support
-      pacman_install mesa
+      # Xorg and 3D support
+      pacman_install xf86-video-vesa mesa
       # Install guest additions
       pacman_install virtualbox-guest-utils virtualbox-guest-modules-arch
       # Load VBox kernel modules automatically
@@ -728,10 +747,9 @@ install_video_card_driver()
       #https://wiki.archlinux.org/index.php/VMware/Installing_Arch_as_a_guest
       pacman_install open-vm-tools
       run_root systemctl enable vmware-vmblock-fuse.service
-      # Xorg
+      # Xorg and 3D support
       pacman_install xf86-input-vmmouse xf86-video-vmware mesa
       ;;
-    *);;
   esac
 }
 
@@ -754,12 +772,12 @@ install_xorg()
     /mnt/etc/X11/xorg.conf.d/00-keyboard.conf.bak || true
   cat <<HERE | tee /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
   Section "InputClass"
-  Identifier "system-keyboard"
-  MatchIsKeyboard "on"
-  Option "XkbLayout" "${x11_layout}"
-  Option "XkbModel" "${x11_model}"
-  Option "XkbVariant" ",${x11_variant}"
-  Option "XkbOptions" "${x11_options}"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "${x11_layout}"
+    Option "XkbModel" "${x11_model}"
+    Option "XkbVariant" ",${x11_variant}"
+    Option "XkbOptions" "${x11_options}"
   EndSection
 HERE
 }
@@ -793,7 +811,10 @@ install_display_manager()
 
   case $display_manager in
     no) alert 'Nothing to install' ;;
-    *)  pacman_install $display_manager ;;
+    *)
+      pacman_install $display_manager
+      run_root systemctl enable ${display_manager}.service
+      ;;
   esac
 }
 
@@ -818,7 +839,7 @@ configure_xinitrc()
     lxde)     echo 'startlxde' ;;
     mate)     echo 'mate-session' ;;
     xfce)     echo 'startxfce4' ;;
-    # Add more...
+    # TODO Add more...
   esac)
   echo -e "exec $session" >> /mnt/home/${username}/.xinitrc
 
@@ -911,10 +932,6 @@ end_installation()
     alert '# systemctl enable vboxservice'
   fi
 
-  case $display_manager in
-    gdm|kdm|sddm|lightdm|lxdm|mdm|slim|xdm)
-      alert "# systemctl enable $display_manager" ;;
-  esac
 }
 # END POST-INSTALL }}}
 
@@ -960,7 +977,6 @@ main()
   end_installation &>> $log
 }
 
-set -e -u
 main "$@"
 exit 0
 
