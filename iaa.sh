@@ -4,6 +4,9 @@
 # templates with big files. Custom them with config variables using sed and
 # copy them into directories (instead of cat<<HERE ......)
 
+# TODO
+# LVM and LUKS
+
 # License:  This  program  is  free  software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published by
 # the  Free Software Foundation; either version 3 of the License, or (at your
@@ -176,10 +179,12 @@ check_configuration()
   # Check BIOS or UEFI
   case $uefi in
     no)
-      ## BIOS supports Syslinux and Grub
+      ## BIOS supports Grub and Syslinux
       case $bootloader in
-        syslinux|grub) ;;
-        *) bootloader='grub' ;;
+        grub|syslinux) ;;
+        *)
+          info 'Set Grub as bootloader'
+          bootloader='grub' ;;
       esac
 
       # boot_size
@@ -187,14 +192,20 @@ check_configuration()
       [[ $boot_size =~ [0-9]+[K,M,G,T] ]] || error_conf 'boot_size'
       ;;
     *)
+      ## UEFI supports Grub, Systemd-boot (gummiboot), EFISTUB and rEFInd
+      case $bootloader in
+        grub|systemd-boot|gummiboot|efistub|reifnd) ;;
+        *)
+          info 'Set Grub as bootloader'
+          bootloader='grub' ;;
+      esac
+
       ## check if install host is booted in uefi mode
       if [[ -z "$(mount --types=efivarfs)" ]]; then
         mount --types=efivarfs /sys/firmware/efi/efivars || error_conf 'uefi'
       fi
       efivar -l || error_conf 'uefi'
-      ## UEFI only allows Grub.
-      ## Syslinux automatic installation is only available for BIOS.
-      bootloader='grub'
+
       type mkfs.vfat || error 'missing package: dosfstools'
 
       # ESP size recommedation
@@ -231,7 +242,7 @@ check_configuration()
 
   # Check login shell
   [[ -z $login_shell ]] && login_shell='bash'
-  case $video_driver in
+  case $login_shell in
     sh|bash|tcsh|dash|fish|ksh|nash|oh|powershell|rc|xonsh|zsh) ;;
     *) error_conf 'login_shell' ;;
   esac
@@ -487,7 +498,7 @@ set_locale()
   sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
   run_root "locale-gen"
   cat <<HERE | tee /mnt/etc/locale.conf
-  LANG=${locale}
+LANG=${locale}
 HERE
 }
 
@@ -496,7 +507,7 @@ set_virtual_console()
   # Refer to https://wiki.archlinux.org/index.php/Keyboard_configuration_in_console
   info '  Virtual console keymap'
   cat <<HERE | tee /mnt/etc/vconsole.conf
-  KEYMAP=${keymap}
+KEYMAP=${keymap}
 HERE
 }
 
@@ -598,9 +609,7 @@ add_user()
   run_root useradd --create-home --gid=users \
     --shell=/bin/$login_shell $username
   if [[ -z $user_password ]]; then
-    if ! run_root passwd $username; then
-      error "Incorrect password for $username"
-    fi
+    run_root passwd -d $username
   else
     printf "${username}:${user_password}\n" | run_root chpasswd
   fi
@@ -628,12 +637,12 @@ install_bootloader()
   info 'Installing bootloader (be patient...)'
   case $bootloader in
     grub)
-      #TODO
       # Refer to https://wiki.archlinux.org/index.php/GRUB
-      ## Install grub package
+
+      # Install
       pacman_install dosfstools efibootmgr grub
 
-      ## Run grub-mkconfig and grub-install
+      # Configure
       if [[ $uefi = 'yes' ]]; then
         ## UEFI
         run_root grub-install --target=x86_64-efi \
@@ -641,6 +650,13 @@ install_bootloader()
           --bootloader-id=grub \
           --recheck
         run_root grub-mkconfig --output=/boot/grub/grub.cfg
+
+        # Workaround for Virtualbox bug in UEFI mode
+        # https://wiki.archlinux.org/index.php/VirtualBox#Installation_in_EFI_mode
+        if [[ $video_driver = 'virtualbox' ]]; then
+          mkdir -p /mnt/boot/EFI/boot
+          cp /mnt/boot/EFI/grub/grubx64.efi /mnt/boot/EFI/boot/bootx64.efi
+        fi
       else
         ## BIOS
         run_root grub-install --target=i386-pc \
@@ -649,12 +665,50 @@ install_bootloader()
       fi
       cat /mnt/boot/grub/grub.cfg
       ;;
-    syslinux)
-      # Refer to https://wiki.archlinux.org/index.php/Syslinux
-      # Install syslinux package
-      pacman_install gptfdisk syslinux
 
-      # Instal
+    systemd-boot|gummibot)
+      # Refer to: https://wiki.archlinux.org/index.php/Systemd-boot
+
+      # Install
+      run_root bootctl --path=/boot install
+      mkdir -p /mnt/boot/loader/entries
+
+      # Configure
+      rm /mnt/boot/loader/loader.conf &> /dev/null
+      cat <<HERE | tee /mnt/boot/loader/loader.conf
+default arch
+timeout 4
+editor  1
+HERE
+
+      partuuid=$(blkid -s PARTUUID -o value ${dest_disk}${root_num})
+      cat <<HERE | tee /mnt/boot/loader/entries/arch.conf
+title   Arch Linux
+linux   /vmlinuz-linux
+initrd  /initramfs-linux.img
+options root=${dest_disk}${root_num} rw splash
+HERE
+
+      # Hook for automatically updating every time the systemd pkg is upgraded
+      mkdir -p /mnt/etc/pacman.d/hooks/
+      cat <<HERE | tee /mnt/etc/pacman.d/hooks/systemd-boot.hook
+[Trigger]
+Type = Package
+Operation = Upgrade
+Target = systemd
+
+[Action]
+Description = Updating systemd-boot...
+When = PostTransaction
+Exec = /usr/bin/bootctl --path=/boot update
+HERE
+      ;;
+
+    syslinux)
+      # Refer to: https://wiki.archlinux.org/index.php/Syslinux
+
+      # Install
+      pacman_install gptfdisk syslinux
       mkdir -p /mnt/boot/syslinux
       cp /mnt/usr/lib/syslinux/bios/*.c32 /mnt/boot/syslinux/ || \
         error 'copying *.c32 files'
@@ -672,51 +726,60 @@ install_bootloader()
 
       # Configure
       cat <<HERE | tee /mnt/boot/syslinux/syslinux.cfg
-      UI vesamenu.c32
-      DEFAULT arch
-      PROMPT 0
-      MENU TITLE Boot Menu
-      MENU BACKGROUND splash.png
-      TIMEOUT 50
+UI vesamenu.c32
+DEFAULT arch
+PROMPT 0
+MENU TITLE Boot Menu
+MENU BACKGROUND splash.png
+TIMEOUT 50
 
-      MENU WIDTH 78
-      MENU MARGIN 4
-      MENU ROWS 5
-      MENU VSHIFT 10
-      MENU TIMEOUTROW 13
-      MENU TABMSGROW 11
-      MENU CMDLINEROW 11
-      MENU HELPMSGROW 16
-      MENU HELPMSGENDROW 29
+MENU WIDTH 78
+MENU MARGIN 4
+MENU ROWS 5
+MENU VSHIFT 10
+MENU TIMEOUTROW 13
+MENU TABMSGROW 11
+MENU CMDLINEROW 11
+MENU HELPMSGROW 16
+MENU HELPMSGENDROW 29
 
-      # Refer to http://www.syslinux.org/wiki/index.php/Comboot/menu.c32
-      MENU COLOR border       30;44   #40ffffff #a0000000 std
-      MENU COLOR title        1;36;44 #9033ccff #a0000000 std
-      MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
-      MENU COLOR unsel        37;44   #50ffffff #a0000000 std
-      MENU COLOR help         37;40   #c0ffffff #a0000000 std
-      MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
-      MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
-      MENU COLOR msg07        37;40   #90ffffff #a0000000 std
-      MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
+# Refer to http://www.syslinux.org/wiki/index.php/Comboot/menu.c32
+MENU COLOR border       30;44   #40ffffff #a0000000 std
+MENU COLOR title        1;36;44 #9033ccff #a0000000 std
+MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
+MENU COLOR unsel        37;44   #50ffffff #a0000000 std
+MENU COLOR help         37;40   #c0ffffff #a0000000 std
+MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
+MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
+MENU COLOR msg07        37;40   #90ffffff #a0000000 std
+MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
 
-      #PROMPT 1
-      #TIMEOUT 50
-      #DEFAULT arch
+#PROMPT 1
+#TIMEOUT 50
+#DEFAULT arch
 
-      LABEL arch
-        MENU LABEL Arch Linux
-        LINUX ../vmlinuz-linux
-        APPEND root=${dest_disk}${root_num} rw
-        INITRD ../initramfs-linux.img
+LABEL arch
+  MENU LABEL Arch Linux
+  LINUX ../vmlinuz-linux
+  APPEND root=${dest_disk}${root_num} rw
+  INITRD ../initramfs-linux.img
 
-      LABEL archfallback
-        MENU LABEL Arch Linux [Fallback]
-        LINUX ../vmlinuz-linux
-        APPEND root=${dest_disk}${root_num} rw
-        INITRD ../initramfs-linux-fallback.img
+LABEL archfallback
+  MENU LABEL Arch Linux [Fallback]
+  LINUX ../vmlinuz-linux
+  APPEND root=${dest_disk}${root_num} rw
+  INITRD ../initramfs-linux-fallback.img
 HERE
       ;;
+
+    efistub)
+      #TODO
+      ;;
+
+    refind)
+      #TODO
+      ;;
+
     *)
       # Never reached
       ;;
@@ -771,14 +834,14 @@ install_xorg()
   mv /mnt/etc/X11/xorg.conf.d/00-keyboard.conf \
     /mnt/etc/X11/xorg.conf.d/00-keyboard.conf.bak || true
   cat <<HERE | tee /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-  Section "InputClass"
-    Identifier "system-keyboard"
-    MatchIsKeyboard "on"
-    Option "XkbLayout" "${x11_layout}"
-    Option "XkbModel" "${x11_model}"
-    Option "XkbVariant" ",${x11_variant}"
-    Option "XkbOptions" "${x11_options}"
-  EndSection
+Section "InputClass"
+  Identifier "system-keyboard"
+  MatchIsKeyboard "on"
+  Option "XkbLayout" "${x11_layout}"
+  Option "XkbModel" "${x11_model}"
+  Option "XkbVariant" ",${x11_variant}"
+  Option "XkbOptions" "${x11_options}"
+EndSection
 HERE
 }
 
@@ -925,13 +988,6 @@ end_installation()
   alert '        Installation completed! (*)'
   alert '     Reboot the computer: # reboot'
   alert '---------------------------------------'
-
-  alert ''
-  alert '(*) After rebooting remember to do...'
-  if [[ $video_driver == 'virtualbox' ]]; then
-    alert '# systemctl enable vboxservice'
-  fi
-
 }
 # END POST-INSTALL }}}
 
