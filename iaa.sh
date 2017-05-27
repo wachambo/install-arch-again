@@ -819,8 +819,9 @@ install_video_card_driver()
 install_xorg()
 {
   # Refer to https://wiki.archlinux.org/index.php/xorg
-  info 'Installing Xorg packages'
-  pacman_install xorg-server xorg-server-utils xorg-utils
+  info 'Installing Xorg server'
+  pacman_install xorg-server
+  # TODO: Additionally, some packages from the xorg-apps group may be necessary
 
   # Configure Xorg keymap
   # Refer to https://wiki.archlinux.org/index.php/Keyboard_configuration_in_Xorg#Using_X_configuration_files
