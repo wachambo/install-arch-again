@@ -240,6 +240,9 @@ check_configuration()
   # Check username
   [[ -z $username ]] && error_conf 'username'
 
+  # Check sudo
+  [[ $sudo =~ yes|no ]] || error_conf 'sudo'
+
   # Check login shell
   [[ -z $login_shell ]] && login_shell='bash'
   case $login_shell in
@@ -612,6 +615,13 @@ add_user()
     run_root passwd -d $username
   else
     printf "${username}:${user_password}\n" | run_root chpasswd
+  fi
+
+  if [[ $sudo = 'yes' ]]; then
+    # Add $username to group 'wheel' and allow its members to execute any command
+    # Refer to https://wiki.archlinux.org/index.php/sudo#Using_visudo
+    run_root usermod --append --groups wheel ${username}
+    run_root sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /etc/sudoers
   fi
 }
 
