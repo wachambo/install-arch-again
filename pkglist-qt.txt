@@ -5,4 +5,7 @@ python2 python2-virtualenv
 chromium
 openssh
 konsole
+dolphin
+kate
 partitionmanager
+keepassxc
