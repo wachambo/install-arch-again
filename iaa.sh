@@ -498,10 +498,15 @@ set_locale()
 {
   # Refer to https://wiki.archlinux.org/index.php/Locale
   info '  System Locale'
+  
+  # Before a locale can be enabled on the system, it must be generated
   sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
   run_root "locale-gen"
+  
+  # Set the system locale
   cat <<HERE | tee /mnt/etc/locale.conf
 LANG=${locale}
+LC_COLLATE=C
 HERE
 }
 
