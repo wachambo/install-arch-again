@@ -8,7 +8,7 @@ base-devel
 ctags
 python2
 python2-virtualenv
-chromium
+firefox
 openssh
 gdm
 gnome-terminal
