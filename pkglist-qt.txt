@@ -1,8 +1,18 @@
 xdg-user-dirs
 zsh vim tmux
-base-devel cmake ctags git
-python2 python2-virtualenv
+base-devel
+cmake
+ctags
+git
+python2
+python2-virtualenv
+ntfs-3g
+partitionmanager
 chromium
 openssh
 konsole
-partitionmanager
+dolphin
+kate
+okular
+gwenview
+keepassxc
