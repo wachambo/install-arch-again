@@ -2,7 +2,7 @@
 
 ## Installation
 ```
-sh <(curl -fLs https://goo.gl/a2i0ET)
+sh <(curl -fLs https://goo.gl/2EJPMa)
 ```
 Edit iaa.conf (Optionally pkglist.txt)
 
