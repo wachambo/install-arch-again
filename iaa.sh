@@ -272,6 +272,13 @@ check_configuration()
     no|gdm|kdm|sddm|lightdm|lxdm|mdm|slim|xdm) ;;
     *) error_conf 'display_manager' ;;
   esac
+
+  ## Check network_manager
+  [[ -z $network_manager ]] && error_conf 'network_manager'
+  case $network_manager in
+    no|connman|dhcpd|netctl|networkmanager|systemd-networkd|wicd) ;;
+    *) error_conf 'network_manager' ;;
+  esac
 }
 
 check_internet()
@@ -498,11 +505,11 @@ set_locale()
 {
   # Refer to https://wiki.archlinux.org/index.php/Locale
   info '  System Locale'
-  
+
   # Before a locale can be enabled on the system, it must be generated
   sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
   run_root "locale-gen"
-  
+
   # Set the system locale
   cat <<HERE | tee /mnt/etc/locale.conf
 LANG=${locale}
@@ -557,44 +564,82 @@ set_hostname()
   cat /mnt/etc/hosts
 }
 
-enable_network_service()
+set_network_manager()
 {
-  # Enable network service (dhcpcd)
-  ip link
+  # Refer to https://wiki.archlinux.org/index.php/Network_configuration
+  info ' Network manager'
 
-  ## Wired net
-  info '  Wired network'
-  local wired_dev
-  wired_dev=$( ip link \
-    | egrep "en[a-z][0-9]" \
-    | awk '{print $2}' \
-    | sed 's/://' \
-    | head -1 \
-    )
-  if [[ -n $wired_dev ]]; then
-    run_root systemctl enable dhcpcd@${wired_dev}.service
-    run_root systemctl start  dhcpcd@${wired_dev}.service
-  else
-    alert '  No wired device'
-  fi
+  case $network_manager in
+    connman)
+      # TODO
+      ;;
 
-  ## Try wifi
-  info '  Wifi network'
-  local wifi_dev
-  wifi_dev=$( ip link \
-    | egrep "wl[0-9]" \
-    | awk '{print $2}' \
-    | sed 's/://' \
-    | head -1
-  )
-  if [[ -n $wifi_dev ]]; then
-    run_root wifi-menu -o $wifi_dev
-  else
-    alert '  No wifi device'
-  fi
+    dhcpd)
+      # Enable network service (dhcpcd)
+      ip link
 
-  [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
-  return 0
+      ## Wired net
+      info '  Wired network'
+      local wired_dev
+      wired_dev=$( ip link \
+          | egrep "en[a-z][0-9]" \
+          | awk '{print $2}' \
+          | sed 's/://' \
+          | head -1 \
+          )
+      if [[ -n $wired_dev ]]; then
+          run_root systemctl enable dhcpcd@${wired_dev}.service
+          run_root systemctl start  dhcpcd@${wired_dev}.service
+      else
+          alert '  No wired device'
+      fi
+
+      ## Try wifi
+      info '  Wifi network'
+      local wifi_dev
+      wifi_dev=$( ip link \
+          | egrep "wl[0-9]" \
+          | awk '{print $2}' \
+          | sed 's/://' \
+          | head -1
+      )
+      if [[ -n $wifi_dev ]]; then
+          run_root wifi-menu -o $wifi_dev
+      else
+          alert '  No wifi device'
+      fi
+
+      [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
+      return 0
+      ;;
+
+    netctl)
+      # TODO
+      ;;
+
+    networkmanager)
+      # Install
+      pacman_install networkmanager
+
+      run_root systemctl enable NetworkManager.service
+      run_root systemctl start  NetworkManager.service
+      ;;
+
+    no|systemd-networkd)
+      # https://wiki.archlinux.org/index.php/Systemd-networkd
+      # TODO
+      ;;
+
+    wicd)
+      # TODO
+      ;;
+
+    wicd)
+      # TODO
+      ;;
+
+    *) ;;
+  esac
 }
 
 set_root_password()
@@ -1031,7 +1076,7 @@ main()
     #TODO
     #add_kernel_modules
     set_hostname
-    enable_network_service
+    set_network_manager
     set_root_password
     add_user
     set_mirrors

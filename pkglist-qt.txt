@@ -1,3 +1,4 @@
+plasma-nm
 xdg-user-dirs
 zsh zsh-completions vim tmux
 base-devel

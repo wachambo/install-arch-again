@@ -21,3 +21,4 @@ login_shell='zsh'
 packages=(neovim zsh)
 window_manager='i3'
 display_manager='no'
+network_manager='dhcpd'
