@@ -220,7 +220,7 @@ check_configuration()
   # Check keymap
   #TODO, bug reported
   #[[ $(localectl list-keymaps) =~ "$keymap" ]] || error_conf 'keymap'
-  [[ -n $keymap && $keymap =~ [a-z][a-z] ]] || error_conf 'keymap'
+  [[ -n ${keymap} && ${keymap} =~ [a-z_\.\ \-]+ ]] || error_conf 'keymap'
   ## Load keymap for installation
   loadkeys ${keymap}
 
