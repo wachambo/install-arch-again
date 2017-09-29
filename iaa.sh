@@ -53,6 +53,13 @@ run_root()
 {
   arch-chroot /mnt "$@"
 }
+run_root_file()
+{
+  local filename=$1
+  while read cmd; do 
+    arch-chroot /mnt "$cmd"
+  done < $filename
+}
 
 trap 'umount -R /mnt; exit 1' SIGHUP SIGINT SIGQUIT SIGTERM ERR
 
@@ -498,11 +505,11 @@ set_locale()
 {
   # Refer to https://wiki.archlinux.org/index.php/Locale
   info '  System Locale'
-  
+
   # Before a locale can be enabled on the system, it must be generated
   sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
   run_root "locale-gen"
-  
+
   # Set the system locale
   cat <<HERE | tee /mnt/etc/locale.conf
 LANG=${locale}
@@ -889,7 +896,10 @@ install_display_manager()
   info '  Installing Display manager'
 
   case $display_manager in
-    no) alert 'Nothing to install' ;;
+    no) 
+      alert 'Nothing to install'
+      _configure_xinitrc
+      ;;
     *)
       pacman_install $display_manager
       run_root systemctl enable ${display_manager}.service
@@ -897,10 +907,8 @@ install_display_manager()
   esac
 }
 
-configure_xinitrc()
+_configure_xinitrc()
 {
-  [[ $display_manager != 'no' ]] && return 0
-
   # Refer to https://wiki.archlinux.org/index.php/xinitrc
   info 'Configuring xinitrc'
   pacman_install xorg-xinit
@@ -941,6 +949,23 @@ install_additional_packages()
     local packages+=( $( < ./pkglist.txt ) )
   fi
   pacman_install ${packages[@]} || true
+}
+
+extra_configurations()
+{
+  info 'Performing extra configurations...'
+  # Execute other scripts
+  for f in *.sh; do
+    if [[ ${f} == ${0##*/} || ${f} == _* ]]; then
+      continue
+    elif [[ ${f} == root_* ]]; then
+      # Run the script as root
+      run_root_file ${f}
+    else
+      # Run the script
+      bash ${f}
+    fi
+  done
 }
 
 review_configurations()
@@ -1041,8 +1066,8 @@ main()
     install_xorg
     install_window_manager
     install_display_manager
-    configure_xinitrc
     install_additional_packages
+    extra_configurations
   } &>> $log
 
   review_configurations
