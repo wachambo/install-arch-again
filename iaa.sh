@@ -568,6 +568,29 @@ set_network_manager()
 {
   # Refer to https://wiki.archlinux.org/index.php/Network_configuration
   info ' Network manager'
+  info '  Wired network'
+  local wired_dev=$( ls /sys/class/net | grep en )
+  if [[ -z $wired_dev ]]; then
+    alert '  No wired device'
+  fi
+  #wired_dev=$( ip link \
+  #  | egrep "en[a-z][0-9]" \
+  #  | awk '{print $2}' \
+  #  | sed 's/://' \
+  #  | head -1 \
+  #)
+
+  info '  Wifi network'
+  local wifi_dev=$( ls /sys/class/net | grep wl )
+  if [[ -z $wifi_dev ]]; then
+    alert '  No wifi device'
+  fi
+  #wifi_dev=$( ip link \
+  #  | egrep "wl[0-9]" \
+  #  | awk '{print $2}' \
+  #  | sed 's/://' \
+  #  | head -1
+  #)
 
   case $network_manager in
     connman)
@@ -576,37 +599,17 @@ set_network_manager()
 
     dhcpd)
       # Enable network service (dhcpcd)
-      ip link
+      #ip link  ???
 
       ## Wired net
-      info '  Wired network'
-      local wired_dev
-      wired_dev=$( ip link \
-          | egrep "en[a-z][0-9]" \
-          | awk '{print $2}' \
-          | sed 's/://' \
-          | head -1 \
-          )
       if [[ -n $wired_dev ]]; then
           run_root systemctl enable dhcpcd@${wired_dev}.service
           run_root systemctl start  dhcpcd@${wired_dev}.service
-      else
-          alert '  No wired device'
       fi
 
       ## Try wifi
-      info '  Wifi network'
-      local wifi_dev
-      wifi_dev=$( ip link \
-          | egrep "wl[0-9]" \
-          | awk '{print $2}' \
-          | sed 's/://' \
-          | head -1
-      )
       if [[ -n $wifi_dev ]]; then
           run_root wifi-menu -o $wifi_dev
-      else
-          alert '  No wifi device'
       fi
 
       [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
@@ -627,11 +630,41 @@ set_network_manager()
 
     no|systemd-networkd)
       # https://wiki.archlinux.org/index.php/Systemd-networkd
-      # TODO
-      ;;
 
-    wicd)
-      # TODO
+      ## Wired net
+      if [[ -n $wired_dev ]]; then
+        cat <<HERE | tee /mnt/etc/systemd/network/20-wired.network
+[Match]
+Name=$wired_dev
+
+[Network]
+DHCP=ipv4
+
+[DHCP]
+RouteMetric=10
+HERE
+      fi
+
+      ## Try wifi
+      if [[ -n $wifi_dev ]]; then
+        cat <<HERE | tee /mnt/etc/systemd/network/25-wireless.network
+[Match]
+Name=$wifi_dev
+
+[Network]
+DHCP=ipv4
+
+[DHCP]
+RouteMetric=10
+HERE
+      fi
+      
+      [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
+      run_root systemctl enable systemd-resolved.service
+      run_root systemctl enable systemd-resolved.service.service
+      run_root systemctl start  systemd-resolved.service
+      run_root systemctl start  systemd-resolved.service.service
+      return 0
       ;;
 
     wicd)
