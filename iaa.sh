@@ -56,7 +56,7 @@ run_root()
 run_root_file()
 {
   local filename=$1
-  while read cmd; do 
+  while read cmd; do
     arch-chroot /mnt "$cmd"
   done < $filename
 }
@@ -896,7 +896,7 @@ install_display_manager()
   info '  Installing Display manager'
 
   case $display_manager in
-    no) 
+    no)
       alert 'Nothing to install'
       _configure_xinitrc
       ;;
