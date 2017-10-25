@@ -727,8 +727,9 @@ make_initial_ramdisk()
 
 install_bootloader()
 {
-  # Refer to https://wiki.archlinux.org/index.php/Bootloader
+  # Refer to: https://wiki.archlinux.org/index.php/Bootloader
   info 'Installing bootloader (be patient...)'
+
   case $bootloader in
     grub)
       # Refer to https://wiki.archlinux.org/index.php/GRUB
@@ -886,14 +887,61 @@ install_video_card_driver()
   [[ -z $video_driver ]] && return 0
   info 'Installing video card driver'
   case $video_driver in
-    amd) ;;
-    ati) ;;
-    intel) ;;
-    nouveau) ;;
-    nvidia) ;;
+    amd)
+      #TODO untested
+      # Refer to: https://wiki.archlinux.org/index.php/AMDGPU
+      # Install driver 2D in Xorg and driver 3D
+      pacman_install xf86-video-amdgpu mesa
+      ;;
+    ati)
+      #TODO untested
+      # Refer to: https://wiki.archlinux.org/index.php/ATI
+      # Install driver 2D in Xorg and driver 3D
+      pacman_install xf86-video-ati mesa
+      ;;
+    intel)
+      # Refer to: https://wiki.archlinux.org/index.php/Intel_graphics
+      # Install driver 2D in Xorg and driver 3D
+      pacman_install xf86-video-intel mesa
+      
+      # Install microcode
+      # Refer to: https://wiki.archlinux.org/index.php/microcode
+      pacman_install intel-ucode
+      case $bootloader in
+        grub) 
+          # regenerate the GRUB config
+          run_root grub-mkconfig --output=/boot/grub/grub.cfg
+          ;;
+        systemd-boot|gummibot)
+          # new initrd line with intel-code.img
+          sed -i '/^linux.*/a\initrd  \/intel-ucode.img' /mnt/boot/loader/entries/arch.conf
+          ;;
+        syslinux)
+          #TODO untested
+          # append intel-code.img to initrd
+          sed -i 's/^  INITRD /  INITRD ../intel-ucode.img,/' /mnt/boot/syslinux/syslinux.cfg
+          ;;
+        efistub) 
+          #TODO
+          ;;
+        refind) 
+          #TODO
+          ;;
+        *) ;;
+      ;;
+    nouveau)
+      #TODO untested
+      # Refer to: https://wiki.archlinux.org/index.php/Nouveau
+      # Install driver 2D in Xorg and driver 3D
+      pacman_install xf86-video-nouveau mesa
+      ;;
+    nvidia)
+      #TODO
+      # Refer to: https://wiki.archlinux.org/index.php/NVIDIA
+      ;;
     virtualbox)
-      #https://wiki.archlinux.org/index.php/VirtualBox#Installation_steps_for_Arch_Linux_guests
-      # Xorg and 3D support
+      # Refer to: https://wiki.archlinux.org/index.php/VirtualBox#Installation_steps_for_Arch_Linux_guests
+      # Install driver 2D in Xorg and driver 3D
       pacman_install xf86-video-vesa mesa
       # Install guest additions
       pacman_install virtualbox-guest-utils virtualbox-guest-modules-arch
@@ -901,24 +949,25 @@ install_video_card_driver()
       run_root systemctl enable vboxservice.service
       ;;
     vmware)
-      #https://wiki.archlinux.org/index.php/VMware/Installing_Arch_as_a_guest
-      pacman_install open-vm-tools
+      # Refer to: https://wiki.archlinux.org/index.php/VMware/Installing_Arch_as_a_guest
+      # Install driver 2D in Xorg and driver 3D
+      pacman_install xf86-video-vmware mesa
+      # Install mouse driver and vmware tools
+      pacman_install xf86-input-vmmouse open-vm-tools
       run_root systemctl enable vmware-vmblock-fuse.service
-      # Xorg and 3D support
-      pacman_install xf86-input-vmmouse xf86-video-vmware mesa
       ;;
   esac
 }
 
 install_xorg()
 {
-  # Refer to https://wiki.archlinux.org/index.php/xorg
+  # Refer to: https://wiki.archlinux.org/index.php/xorg
   info 'Installing Xorg server'
   pacman_install xorg-server
   # TODO: Additionally, some packages from the xorg-apps group may be necessary
 
   # Configure Xorg keymap
-  # Refer to https://wiki.archlinux.org/index.php/Keyboard_configuration_in_Xorg#Using_X_configuration_files
+  # Refer to: https://wiki.archlinux.org/index.php/Keyboard_configuration_in_Xorg#Using_X_configuration_files
   info '  Xorg keymap'
   #localectl --no-convert set-x11-keymap \
     #  ${x11_layout} ${x11_model} ${x11_variant} ${x11_options} || \
