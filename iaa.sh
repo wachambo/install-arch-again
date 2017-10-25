@@ -214,8 +214,10 @@ check_configuration()
       ;;
   esac
 
-  # Check locale: enforce UTF-8
-  [[ $(localectl list-locales) =~ "$locale" ]] || error_conf 'locale'
+  # Check locale
+  if ! grep "$locale" /etc/locale.gen &> /dev/null; then
+    error_conf 'locale'
+  fi
 
   # Check keymap
   #TODO, bug reported
