@@ -109,14 +109,14 @@ check_configuration()
 
   # Check /mnt for availability
   if mountpoint /mnt &> /dev/null; then
-    error 'working directory /mnt is blocked by mounted filesystem
-  do: $ umount -R /mnt'
+    error 'working directory /mnt is blocked by mounted filesystem \
+    do: $ umount -R /mnt'
   fi
 
   # Check dest_disk for mounted filesystems
   if mount | grep "$dest_disk" &> /dev/null; then
-    error 'found mounted filesystem on destination disk
-  do: $ umount -R /mnt'
+    error 'found mounted filesystem on destination disk \
+    do: $ umount -R /mnt'
   fi
 
   ## Check swap_size
