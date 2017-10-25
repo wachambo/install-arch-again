@@ -5,7 +5,7 @@ echo 'Downloading files...'
 
 for f in iaa.sh iaa.conf iaa-i3.conf iaa-kde.conf pkglist.txt pkglist-gtk.txt pkglist-qt.txt; do
   echo $f
-  curl -fOLs "https://raw.github.com/wachambo/install-arch-again/master/${f}"
+  curl -fOLs "https://gitlab.com/wachambo/install-arch-again/raw/networkmanager/${f}"
   [ $? != '0' ] && echo 'Error' && exit 1
 done
 
