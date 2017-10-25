@@ -703,6 +703,7 @@ add_user()
   if [[ $sudo = 'yes' ]]; then
     # Add $username to group 'wheel' and allow its members to execute any command
     # Refer to https://wiki.archlinux.org/index.php/sudo#Using_visudo
+    pacman_install sudo
     run_root usermod --append --groups wheel ${username}
     run_root sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /etc/sudoers
   fi
