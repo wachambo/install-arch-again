@@ -9,7 +9,7 @@ python2
 python2-virtualenv
 ntfs-3g
 partitionmanager
-firefox
+chromium
 openssh
 konsole
 dolphin
