@@ -480,7 +480,7 @@ generate_fstab()
 {
   # Refer to https://wiki.archlinux.org/index.php/Fstab
   info 'Generatig Mounting File System Table'
-  genfstab -p -t=UUID /mnt > /mnt/etc/fstab
+  genfstab -t=UUID -P /mnt > /mnt/etc/fstab
   cat /mnt/etc/fstab
 }
 # INSTALLATION }}}
@@ -731,6 +731,9 @@ install_bootloader()
 {
   # Refer to: https://wiki.archlinux.org/index.php/Bootloader
   info 'Installing bootloader (be patient...)'
+  
+  local partuuid=$(blkid -s PARTUUID -o value ${dest_disk}${root_num})
+  local uuid=$(blkid -s UUID -o value ${dest_disk}${root_num})
 
   case $bootloader in
     grub)
@@ -778,12 +781,11 @@ timeout 4
 editor  1
 HERE
 
-      partuuid=$(blkid -s PARTUUID -o value ${dest_disk}${root_num})
       cat <<HERE | tee /mnt/boot/loader/entries/arch.conf
 title   Arch Linux
 linux   /vmlinuz-linux
 initrd  /initramfs-linux.img
-options root=${dest_disk}${root_num} rw splash
+options root=UUID=$uuid rw splash
 HERE
 
       # Hook for automatically updating every time the systemd pkg is upgraded
@@ -811,11 +813,11 @@ HERE
         error 'copying *.c32 files'
       run_root extlinux --install /boot/syslinux/ || error 'installing Syslinux'
       ## Mark boot partition as "active"
-      sgdisk --attributes=1:set:2 /dev/sda || \
+      sgdisk --attributes=1:set:2 ${dest_disk} || \
         error 'setting bit 2 of the attributes for /boot partition'
       ## Install the MBR
       dd bs=440 conv=notrunc count=1 if=/mnt/usr/lib/syslinux/bios/gptmbr.bin \
-        of=/dev/sda || error 'installing MBR'
+        of=${dest_disk} || error 'installing MBR'
       ## Download a splash screen
       curl \
         http://ftp.sleepgate.ru/pxe/archiso/current/boot/syslinux/splash.png \
@@ -858,13 +860,13 @@ MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
 LABEL arch
   MENU LABEL Arch Linux
   LINUX ../vmlinuz-linux
-  APPEND root=${dest_disk}${root_num} rw
+  APPEND root=UUID=$uuid rw
   INITRD ../initramfs-linux.img
 
 LABEL archfallback
   MENU LABEL Arch Linux [Fallback]
   LINUX ../vmlinuz-linux
-  APPEND root=${dest_disk}${root_num} rw
+  APPEND root=UUID=$uuid rw
   INITRD ../initramfs-linux-fallback.img
 HERE
       ;;
