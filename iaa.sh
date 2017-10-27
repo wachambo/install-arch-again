@@ -480,7 +480,7 @@ generate_fstab()
 {
   # Refer to https://wiki.archlinux.org/index.php/Fstab
   info 'Generatig Mounting File System Table'
-  genfstab -t=UUID -P /mnt > /mnt/etc/fstab
+  genfstab -t UUID -P /mnt > /mnt/etc/fstab
   cat /mnt/etc/fstab
 }
 # INSTALLATION }}}
@@ -932,6 +932,7 @@ install_video_card_driver()
           #TODO
           ;;
         *) ;;
+      esac
       ;;
     nouveau)
       #TODO untested
