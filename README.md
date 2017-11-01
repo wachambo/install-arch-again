@@ -4,7 +4,7 @@
 First of all connect to internet pluging ethernet cable or activating wifi with: `wifi-menu`
 
 ```
-sh <(curl -fLs https://goo.gl/2EJPMa)
+sh <(curl -fLs https://goo.gl/QoGZkf)
 vi iaa.conf pkglist.txt
 ./iaa.sh
 ```
