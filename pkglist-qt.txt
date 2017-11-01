@@ -1,19 +1,25 @@
 plasma-nm
-xdg-user-dirs
-zsh zsh-completions vim tmux
-base-devel
-cmake
-ctags
-git
-python2
-python2-virtualenv
-ntfs-3g
 partitionmanager
-chromium
-openssh
 konsole
 dolphin
 kate
 okular
 gwenview
+xdg-user-dirs
+zsh zsh-completions
+vim
+tmux
+base-devel
+cmake
+ctags
+git
+python2 python2-virtualenv
+ntfs-3g
+chromium
+openssh
 keepassxc
+rsync
+pv
+go go-tools
+virtualbox virtualbox-host-modules-arch
+adobe-source-code-pro-fonts
