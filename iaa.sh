@@ -271,7 +271,7 @@ check_configuration()
   [[ -z $window_manager ]] && error_conf 'window_manager'
   case $window_manager in
     #TODO complete
-    no|cinnamon|enlightenment|gnome|i3|kde|lxde|mate|xfce4)  ;;
+    no|cinnamon|enlightenment|gnome|i3|kde|lxde|mate|xfce)  ;;
     *) error_conf 'window_manager' ;;
   esac
 
@@ -667,7 +667,7 @@ DHCP=ipv4
 RouteMetric=10
 HERE
       fi
-      
+
       [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
       run_root systemctl enable systemd-resolved.service
       run_root systemctl enable systemd-resolved.service.service
@@ -738,7 +738,7 @@ install_bootloader()
 {
   # Refer to: https://wiki.archlinux.org/index.php/Bootloader
   info 'Installing bootloader (be patient...)'
-  
+
   local partuuid=$(blkid -s PARTUUID -o value ${dest_disk}${root_num})
   local uuid=$(blkid -s UUID -o value ${dest_disk}${root_num})
 
@@ -914,12 +914,12 @@ install_video_card_driver()
       # Refer to: https://wiki.archlinux.org/index.php/Intel_graphics
       # Install driver 2D in Xorg and driver 3D
       pacman_install xf86-video-intel mesa
-      
+
       # Install microcode
       # Refer to: https://wiki.archlinux.org/index.php/microcode
       pacman_install intel-ucode
       case $bootloader in
-        grub) 
+        grub)
           # regenerate the GRUB config
           run_root grub-mkconfig --output=/boot/grub/grub.cfg
           ;;
@@ -932,10 +932,10 @@ install_video_card_driver()
           # append intel-code.img to initrd
           sed -i 's/^  INITRD /  INITRD ../intel-ucode.img,/' /mnt/boot/syslinux/syslinux.cfg
           ;;
-        efistub) 
+        efistub)
           #TODO
           ;;
-        refind) 
+        refind)
           #TODO
           ;;
         *) ;;
