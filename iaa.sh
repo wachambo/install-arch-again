@@ -669,10 +669,8 @@ HERE
       fi
 
       [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
+      run_root systemctl enable systemd-networkd.service
       run_root systemctl enable systemd-resolved.service
-      run_root systemctl enable systemd-resolved.service.service
-      run_root systemctl start  systemd-resolved.service
-      run_root systemctl start  systemd-resolved.service.service
       return 0
       ;;
 
