@@ -1,15 +1,16 @@
-bash-completion
+bash bash-completion
 xdg-user-dirs
-vim
+vim gvim
 adobe-source-code-pro-fonts
 tmux
 git
 base-devel
 ctags
-python2
-python2-virtualenv
+python2 python2-virtualenv
 firefox
 openssh
-gdm
 gnome-terminal
+gedit
 gparted
+keepassxc
+jre8-openjdk
