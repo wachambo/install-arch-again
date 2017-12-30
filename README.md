@@ -14,11 +14,11 @@ Enjoy :)
 Add custom scripts to run at the end of installation
 
 ## Files
-|File       |Meaning                   |
-|-----------|--------------------------|
-|iaa.sh     |Main script               |
-|iaa.conf   |Configuration             |
-|pkglist.txt|Packages                  |
-|\*.sh      |Optional script           |
-|root\_\*.sh|Optional scripts (as root)|
-|\_\*.sh    |Omitted scripts           |
+|File          |Meaning          |
+|--------------|-----------------|
+|iaa.sh        |Main script      |
+|iaa\_extra.sh |Helper functions |
+|iaa.conf      |Configuration    |
+|pkglist.txt   |Packages         |
+|\*.sh         |Optional script  |
+|\_\*.sh       |Omitted scripts  |

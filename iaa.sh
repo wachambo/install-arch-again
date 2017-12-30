@@ -26,43 +26,9 @@
 set -e
 set -u
 
-# Some global vars
-unset log tty
-log='./iaa.log'
-tty=$(tty)
-
-error_conf()
-{
-  printf "\033[1;31m%s\n\033[1;0m" "Error in var configuration $1" | tee -a  $log
-  exit 1
-}
-error()
-{
-  printf "\033[1;31m%s\n\033[1;0m" "Error: $@" | tee -a  $log
-  exit 1
-}
-info()
-{
-  printf "%s\n" "$@" | tee $tty
-}
-alert()
-{
-  printf "\033[1;31m%s\n\033[1;0m" "$@" | tee $tty
-}
-run_root()
-{
-  arch-chroot /mnt "$@"
-}
-run_root_file()
-{
-  local filename=$1
-  while read cmd; do
-    arch-chroot /mnt "$cmd"
-  done < $filename
-}
+source ./iaa_aux.sh
 
 trap 'umount -R /mnt; exit 1' SIGHUP SIGINT SIGQUIT SIGTERM ERR
-
 
 # INSTALLATION {{{
 begin_installation()
@@ -235,7 +201,7 @@ check_configuration()
 
   # Check x11-layout
   # (cannot vaalidate other options in this step)
-  [[ -n $x11_layout && $x11_layout =~ [a-z][a-z] ]] || error_conf 'x11_layout'
+  [[ -n $xkb_layout && $xkb_layout =~ [a-z][a-z] ]] || error_conf 'xkb_layout'
 
   # Check timezone
   [[ -n $timezone && $(timedatectl list-timezones) =~ "$timezone" ]] || error_conf 'timezone'
@@ -517,13 +483,16 @@ set_locale()
 
   # Before a locale can be enabled on the system, it must be generated
   sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
-  run_root "locale-gen"
+  run_root locale-gen
 
-  # Set the system locale
-  cat <<HERE | tee /mnt/etc/locale.conf
-LANG=${locale}
-LC_COLLATE=C
-HERE
+  # Set the system locale (generate /mnt/etc/locale.conf)
+  local _locale=$(run_root localectl list-locales)
+  run_root localectl set-locale LANG=$_locale \
+    LANGUAGE=$fallback_locale LC_COLLATE=C
+#  cat <<HERE | tee /mnt/etc/locale.conf
+#LANG=${locale}
+#LC_COLLATE=C
+#HERE
 }
 
 set_virtual_console()
@@ -667,7 +636,7 @@ DHCP=ipv4
 RouteMetric=10
 HERE
       fi
-      
+
       [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
       run_root systemctl enable systemd-resolved.service
       run_root systemctl enable systemd-resolved.service.service
@@ -738,7 +707,7 @@ install_bootloader()
 {
   # Refer to: https://wiki.archlinux.org/index.php/Bootloader
   info 'Installing bootloader (be patient...)'
-  
+
   local partuuid=$(blkid -s PARTUUID -o value ${dest_disk}${root_num})
   local uuid=$(blkid -s UUID -o value ${dest_disk}${root_num})
 
@@ -914,12 +883,12 @@ install_video_card_driver()
       # Refer to: https://wiki.archlinux.org/index.php/Intel_graphics
       # Install driver 2D in Xorg and driver 3D
       pacman_install xf86-video-intel mesa
-      
+
       # Install microcode
       # Refer to: https://wiki.archlinux.org/index.php/microcode
       pacman_install intel-ucode
       case $bootloader in
-        grub) 
+        grub)
           # regenerate the GRUB config
           run_root grub-mkconfig --output=/boot/grub/grub.cfg
           ;;
@@ -932,10 +901,10 @@ install_video_card_driver()
           # append intel-code.img to initrd
           sed -i 's/^  INITRD /  INITRD ../intel-ucode.img,/' /mnt/boot/syslinux/syslinux.cfg
           ;;
-        efistub) 
+        efistub)
           #TODO
           ;;
-        refind) 
+        refind)
           #TODO
           ;;
         *) ;;
@@ -978,27 +947,27 @@ install_xorg()
   pacman_install xorg-server
   # TODO: Additionally, some packages from the xorg-apps group may be necessary
 
-  # Configure Xorg keymap
+  # Configure Xorg keymap (generate /mnt/X11/xorg.conf.d/00-keyboard.conf)
   # Refer to: https://wiki.archlinux.org/index.php/Keyboard_configuration_in_Xorg#Using_X_configuration_files
   info '  Xorg keymap'
-  #localectl --no-convert set-x11-keymap \
-    #  ${x11_layout} ${x11_model} ${x11_variant} ${x11_options} || \
-    #  error 'Xorg keymap'
+  mkdir -p /mnt/etc/X11/xorg.conf.d
+#  mv /mnt/etc/X11/xorg.conf.d/00-keyboard.conf \
+#    /mnt/etc/X11/xorg.conf.d/00-keyboard.conf.bak || true
+#  cat <<HERE | tee /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+#Section "InputClass"
+#  Identifier "system-keyboard"
+#  MatchIsKeyboard "on"
+#  Option "XkbLayout" "${xkb_layout}"
+#  Option "XkbModel" "${xkb_model}"
+#  Option "XkbVariant" ",${xkb_variant}"
+#  Option "XkbOptions" "${xkb_options}"
+#EndSection
+#HERE
+  run_root localectl set-x11-keymap \
+      $xkb_layout $xkb_model $xkb_variant $xkb_options || \
+      error 'Xorg keymap'
   #cat /etc/X11/xorg.conf.d/00-keyboard.conf
 
-  mkdir -p /mnt/etc/X11/xorg.conf.d
-  mv /mnt/etc/X11/xorg.conf.d/00-keyboard.conf \
-    /mnt/etc/X11/xorg.conf.d/00-keyboard.conf.bak || true
-  cat <<HERE | tee /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-Section "InputClass"
-  Identifier "system-keyboard"
-  MatchIsKeyboard "on"
-  Option "XkbLayout" "${x11_layout}"
-  Option "XkbModel" "${x11_model}"
-  Option "XkbVariant" ",${x11_variant}"
-  Option "XkbOptions" "${x11_options}"
-EndSection
-HERE
 }
 
 install_window_manager()
@@ -1013,7 +982,7 @@ install_window_manager()
     cinnamon) pacman_install cinnamon ;;
     enlightenment)
       pacman_install enlightenment ;;
-    gnome)    pacman_install gnome-shell gnome-control-center ;;
+    gnome)    pacman_install gnome gnome-tweak-tools ;;
     i3)       pacman_install i3 dmenu ;;
     kde)      pacman_install plasma plasma-wayland-session ;;
     lxde)     pacman_install lxde ;;
@@ -1091,12 +1060,8 @@ extra_configurations()
   for f in *.sh; do
     if [[ ${f} == ${0##*/} || ${f} == _* ]]; then
       continue
-    elif [[ ${f} == root_* ]]; then
-      # Run the script as root
-      run_root_file ${f}
     else
-      # Run the script
-      bash ${f}
+      ./${f}
     fi
   done
 }
