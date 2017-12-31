@@ -987,7 +987,7 @@ install_window_manager()
     cinnamon) pacman_install cinnamon ;;
     enlightenment)
       pacman_install enlightenment ;;
-    gnome)    pacman_install gnome gnome-tweak-tools ;;
+    gnome)    pacman_install gnome gnome-tweak-tool ;;
     i3)       pacman_install i3 dmenu ;;
     kde)      pacman_install plasma plasma-wayland-session ;;
     lxde)     pacman_install lxde ;;
