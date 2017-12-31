@@ -1,3 +1,3 @@
 source ./iaa_extra.sh
 
-systemctl enable sshd.service
+run_root systemctl enable sshd.service
