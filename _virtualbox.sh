@@ -10,7 +10,10 @@ no)
   echo "/usr/bin/VBoxClient-all" >> /mnt/home/${username}/.xinitrc
   ;;
 *)
-  mkdir -p /mnt/home/${username}/.config/autostart/
-  cp /mnt/etc/xdg/autostart/vboxclient.desktop /mnt/home/${username}/.config/autostart/
+  mkdir -p /mnt/home/"$username"/.config/autostart/
+  cp /mnt/etc/xdg/autostart/vboxclient.desktop \
+    /mnt/home/"$username"/.config/autostart/
+  run_root chown $username \
+    /home/"$username"/.config/autostart/vboxclient.desktop
   ;;
 esac
