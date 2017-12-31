@@ -1136,6 +1136,8 @@ main()
 {
   > $log
 
+  local _start=$(date +%s)
+
   {
     check_requirements
     check_configuration
@@ -1167,6 +1169,10 @@ main()
     install_additional_packages
     extra_configurations
   } &>> $log
+
+  local _end=$(date +%s)
+  local _runtime=$((_end - _start))
+  info "Total runtime: " $_runtime
 
   review_configurations
   end_installation &>> $log
