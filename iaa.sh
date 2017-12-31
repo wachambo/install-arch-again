@@ -274,7 +274,7 @@ make_part()
   # Ask confirmation
   local answer='x'
   while [[ $answer != 'Y' ]]; do
-    printf 'Continue? (Y/n) ' | tee $tty
+    printf 'Continue? (Y/n) ' > $tty
     read -n 2 -r answer
     [[ $answer = 'n' ]] && error 'script cancelled'
     printf '\n'
