@@ -585,7 +585,6 @@ set_network_manager()
       ## Wired net
       if [[ -n $wired_dev ]]; then
           run_root systemctl enable dhcpcd@${wired_dev}.service
-          run_root systemctl start  dhcpcd@${wired_dev}.service
       fi
 
       ## Try wifi
@@ -606,7 +605,6 @@ set_network_manager()
       pacman_install networkmanager
 
       run_root systemctl enable NetworkManager.service
-      run_root systemctl start  NetworkManager.service
       ;;
 
     no|systemd-networkd)
@@ -642,9 +640,6 @@ HERE
 
       [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
       run_root systemctl enable systemd-resolved.service
-      run_root systemctl enable systemd-resolved.service.service
-      run_root systemctl start  systemd-resolved.service
-      run_root systemctl start  systemd-resolved.service.service
       return 0
       ;;
 
