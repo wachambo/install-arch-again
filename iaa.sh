@@ -26,7 +26,7 @@
 set -e
 set -u
 
-source ./iaa_aux.sh
+source ./iaa_extra.sh
 
 trap 'umount -R /mnt; exit 1' SIGHUP SIGINT SIGQUIT SIGTERM ERR
 
@@ -482,13 +482,16 @@ set_locale()
   info '  System Locale'
 
   # Before a locale can be enabled on the system, it must be generated
+  sed -i "/#${locale}/s//${locale}/" /etc/locale.gen
+  locale-gen
   sed -i "/#${locale}/s//${locale}/" /mnt/etc/locale.gen
   run_root locale-gen
 
   # Set the system locale (generate /mnt/etc/locale.conf)
-  local _locale=$(run_root localectl list-locales)
-  run_root localectl set-locale LANG=$_locale \
+  local _locale=$(localectl list-locales)
+  localectl set-locale LANG=$_locale \
     LANGUAGE=$fallback_locale LC_COLLATE=C
+  cp /etc/locale.conf /mnt/etc/locale.conf
 #  cat <<HERE | tee /mnt/etc/locale.conf
 #LANG=${locale}
 #LC_COLLATE=C
@@ -963,9 +966,11 @@ install_xorg()
 #  Option "XkbOptions" "${xkb_options}"
 #EndSection
 #HERE
-  run_root localectl set-x11-keymap \
-      $xkb_layout $xkb_model $xkb_variant $xkb_options || \
-      error 'Xorg keymap'
+  localectl set-x11-keymap \
+    $xkb_layout $xkb_model $xkb_variant $xkb_options || \
+    error 'Xorg keymap'
+  cp /etc/X11/xorg.conf.d/00-keyboard.conf \
+    /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
   #cat /etc/X11/xorg.conf.d/00-keyboard.conf
 
 }
