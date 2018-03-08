@@ -8,12 +8,6 @@ git
 python2
 python2-virtualenv
 ntfs-3g
-partitionmanager
 chromium
 openssh
-konsole
-dolphin
-kate
-okular
-gwenview
 keepassxc
