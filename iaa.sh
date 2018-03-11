@@ -244,7 +244,7 @@ check_configuration()
   ## Check display_manager
   [[ -z $display_manager ]] && error_conf 'display_manager'
   case $display_manager in
-    no|gdm|kdm|sddm|lightdm|lxdm|mdm|slim|xdm) ;;
+    no|gdm|kdm|sddm|lightdm|lxdm|mdm|xdm) ;;
     *) error_conf 'display_manager' ;;
   esac
 
