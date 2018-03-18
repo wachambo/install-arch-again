@@ -33,8 +33,8 @@ trap 'umount -R /mnt; exit 1' SIGHUP SIGINT SIGQUIT SIGTERM ERR
 # INSTALLATION {{{
 begin_installation()
 {
-  alert '         Starting installation'
-  alert '         ---------------------'
+  info '         Starting installation'
+  info '         ---------------------'
 }
 
 check_requirements()
@@ -64,7 +64,7 @@ check_configuration()
   case $review in
     yes)
       if ! type "$EDITOR" > /dev/null; then
-        alert "  $EDITOR not fond. Automatically changed to EDITOR='vi'"
+        warn "  $EDITOR not fond. Automatically changed to EDITOR='vi'"
         EDITOR='vi'
       fi
       ;;
@@ -265,11 +265,11 @@ check_internet()
 make_part()
 {
   # Refer to https://wiki.archlinux.org/index.php/Partitioning
-  alert '---------------------------------------'
-  alert 'The following drive will be formatted'
+  info '---------------------------------------'
+  info 'The following drive will be formatted'
   local devs=$(lsblk --output=NAME,TYPE,MODEL,SIZE,FSTYPE "$dest_disk")
-  alert "$devs"
-  alert '---------------------------------------'
+  info "$devs"
+  info '---------------------------------------'
 
   # Ask confirmation
   local answer='x'
@@ -461,8 +461,8 @@ generate_fstab()
 
 begin_post_installation()
 {
-  alert '      Starting Post-installation'
-  alert '      --------------------------'
+  info '      Starting Post-installation'
+  info '      --------------------------'
 }
 
 # {{{ POST INSTALL: from here, all in the new filesystem
@@ -552,7 +552,7 @@ set_network_manager()
   info '  Wired network'
   local wired_dev=$( ls /sys/class/net | grep en )
   if [[ -z $wired_dev ]]; then
-    alert '  No wired device'
+    warn '  No wired device'
   fi
   #wired_dev=$( ip link \
   #  | egrep "en[a-z][0-9]" \
@@ -564,7 +564,7 @@ set_network_manager()
   info '  Wifi network'
   local wifi_dev=$( ls /sys/class/net | grep wl )
   if [[ -z $wifi_dev ]]; then
-    alert '  No wifi device'
+    warn '  No wifi device'
   fi
   #wifi_dev=$( ip link \
   #  | egrep "wl[0-9]" \
@@ -978,7 +978,7 @@ install_window_manager()
   info '  Installing Window Manager/Desktop Environment'
 
   case $window_manager in
-    no)       alert 'Nothing to install' ;;
+    no)       warn 'Nothing to install' ;;
     cinnamon) pacman_install cinnamon ;;
     enlightenment)
       pacman_install enlightenment ;;
@@ -999,7 +999,7 @@ install_display_manager()
 
   case $display_manager in
     no)
-      alert 'Nothing to install'
+      warn 'Nothing to install'
       _configure_xinitrc
       ;;
     *)
@@ -1123,10 +1123,10 @@ end_installation()
   info 'Unmounting filesystems'
   umount --recursive /mnt
 
-  alert '---------------------------------------'
-  alert '        Installation completed! (*)'
-  alert '     Reboot the computer: # reboot'
-  alert '---------------------------------------'
+  info '---------------------------------------'
+  info '        Installation completed! (*)'
+  info '     Reboot the computer: # reboot'
+  info '---------------------------------------'
 }
 # END POST-INSTALL }}}
 
