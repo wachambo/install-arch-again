@@ -10,4 +10,5 @@ python2 python2-virtualenv
 firefox
 openssh
 keepassxc
-jre8-openjdk
+jre9-openjdk
+rsync
