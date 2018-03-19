@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-#TODO
-# templates with big files. Custom them with config variables using sed and
-# copy them into directories (instead of cat<<HERE ......)
-
 # TODO
 # LVM and LUKS
 
@@ -612,30 +608,14 @@ set_network_manager()
 
       ## Wired net
       if [[ -n $wired_dev ]]; then
-        cat <<HERE | tee /mnt/etc/systemd/network/20-wired.network
-[Match]
-Name=$wired_dev
-
-[Network]
-DHCP=ipv4
-
-[DHCP]
-RouteMetric=10
-HERE
+      	cp ./network/20-wired.network /mnt/etc/systemd/network/20-wired.network
+      	sed -i "s/wired_dev/$wired_dev" /mnt/etc/systemd/network/20-wired.network
       fi
 
       ## Try wifi
       if [[ -n $wifi_dev ]]; then
-        cat <<HERE | tee /mnt/etc/systemd/network/25-wireless.network
-[Match]
-Name=$wifi_dev
-
-[Network]
-DHCP=ipv4
-
-[DHCP]
-RouteMetric=10
-HERE
+      	cp ./network/25-wireless.network /mnt/etc/systemd/network/25-wireless.network
+  		sed -i "s/wifi_dev/$wifi_dev" /mnt/etc/systemd/network/25-wireless.network
       fi
 
       [[ -z $wired_dev && -z $wifi_dev ]] && error 'Cant find any network device'
@@ -748,33 +728,14 @@ install_bootloader()
       mkdir -p /mnt/boot/loader/entries
 
       # Configure
-      rm /mnt/boot/loader/loader.conf &> /dev/null
-      cat <<HERE | tee /mnt/boot/loader/loader.conf
-default arch
-timeout 4
-editor  1
-HERE
-
-      cat <<HERE | tee /mnt/boot/loader/entries/arch.conf
-title   Arch Linux
-linux   /vmlinuz-linux
-initrd  /initramfs-linux.img
-options root=UUID=$uuid rw splash
-HERE
+      mkdir -p /mnt/boot/loader/
+      cp ./bootloader/systemd-boot/loader.conf /mnt/boot/loader/loader.conf
+      cp ./bootloader/systemd-boot/arch.conf /mnt/boot/loader/entries/arch.conf
+      sed -i "s/uuid/$uuid" /mnt/boot/loader/entries/arch.conf
 
       # Hook for automatically updating every time the systemd pkg is upgraded
       mkdir -p /mnt/etc/pacman.d/hooks/
-      cat <<HERE | tee /mnt/etc/pacman.d/hooks/systemd-boot.hook
-[Trigger]
-Type = Package
-Operation = Upgrade
-Target = systemd
-
-[Action]
-Description = Updating systemd-boot...
-When = PostTransaction
-Exec = /usr/bin/bootctl --path=/boot update
-HERE
+      cp ./bootloader/systemd-boot/systemd-booot.hook /mnt/etc/pacman.d/hooks/systemd-booot.hook
       ;;
 
     syslinux)
@@ -798,51 +759,7 @@ HERE
         -o /mnt/boot/syslinux/splash.png || error 'splash url not found'
 
       # Configure
-      cat <<HERE | tee /mnt/boot/syslinux/syslinux.cfg
-UI vesamenu.c32
-DEFAULT arch
-PROMPT 0
-MENU TITLE Boot Menu
-MENU BACKGROUND splash.png
-TIMEOUT 50
-
-MENU WIDTH 78
-MENU MARGIN 4
-MENU ROWS 5
-MENU VSHIFT 10
-MENU TIMEOUTROW 13
-MENU TABMSGROW 11
-MENU CMDLINEROW 11
-MENU HELPMSGROW 16
-MENU HELPMSGENDROW 29
-
-# Refer to http://www.syslinux.org/wiki/index.php/Comboot/menu.c32
-MENU COLOR border       30;44   #40ffffff #a0000000 std
-MENU COLOR title        1;36;44 #9033ccff #a0000000 std
-MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
-MENU COLOR unsel        37;44   #50ffffff #a0000000 std
-MENU COLOR help         37;40   #c0ffffff #a0000000 std
-MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
-MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
-MENU COLOR msg07        37;40   #90ffffff #a0000000 std
-MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
-
-#PROMPT 1
-#TIMEOUT 50
-#DEFAULT arch
-
-LABEL arch
-  MENU LABEL Arch Linux
-  LINUX ../vmlinuz-linux
-  APPEND root=UUID=$uuid rw
-  INITRD ../initramfs-linux.img
-
-LABEL archfallback
-  MENU LABEL Arch Linux [Fallback]
-  LINUX ../vmlinuz-linux
-  APPEND root=UUID=$uuid rw
-  INITRD ../initramfs-linux-fallback.img
-HERE
+      cp ./bootloader/syslinux/syslinux.cfg /mnt/boot/syslinux/syslinux.cfg
       ;;
 
     efistub)
@@ -962,12 +879,9 @@ install_xorg()
 #EndSection
 #HERE
   localectl set-x11-keymap \
-    $xkb_layout $xkb_model $xkb_variant $xkb_options || \
-    error 'Xorg keymap'
+    $xkb_layout $xkb_model $xkb_variant $xkb_options || error 'Xorg keymap'
   cp /etc/X11/xorg.conf.d/00-keyboard.conf \
     /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-  #cat /etc/X11/xorg.conf.d/00-keyboard.conf
-
 }
 
 install_window_manager()

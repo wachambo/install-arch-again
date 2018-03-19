@@ -1,0 +1,8 @@
+[Match]
+Name=wired_dev
+
+[Network]
+DHCP=ipv4
+
+[DHCP]
+RouteMetric=10
